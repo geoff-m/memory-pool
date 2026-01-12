@@ -1,15 +1,17 @@
 cmake_minimum_required(VERSION 3.28)
 project(memory_pool)
-
 set(CMAKE_CXX_STANDARD 20)
+include(cmake/asan.cmake)
+include(cmake/msan.cmake)
+include(cmake/tsan.cmake)
+include(cmake/ubsan.cmake)
+
 enable_testing()
 Set(FETCHCONTENT_QUIET FALSE)
 include(FetchContent)
 
 add_library(memory_pool
         include/memory_pool.h
-        src/memory_pool.cpp
-        src/include/internal.h
         src/internal_linux.cpp)
 
 target_include_directories(memory_pool PUBLIC include)

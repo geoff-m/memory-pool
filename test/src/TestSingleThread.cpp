@@ -1,21 +1,21 @@
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 #include "memory_pool.h"
 #include "TestUtils.h"
 
 TEST(SingleThread, Create) {
-    memory_pool pool(10000);
+    memory_pool<char> pool(10000);
 }
 
 TEST(SingleThread, UseAtOnce) {
     constexpr auto size = 10000;
-    memory_pool pool(size);
+    memory_pool<char> pool(size);
     useMemory(pool.allocate(size), size);
     assertPoolFull(pool);
 }
 
 TEST(SingleThread, Use) {
     constexpr auto size = 10000;
-    memory_pool pool(size, false, false, out_of_memory_behavior::ReturnNull);
+    memory_pool<char> pool(size, false, false, out_of_memory_behavior::ReturnNull);
     EXPECT_EQ(pool.get_capacity(), size);
     constexpr auto chunkSize = 1234;
     constexpr auto expectedChunkCount = size / chunkSize;
@@ -35,7 +35,7 @@ TEST(SingleThread, Use) {
 }
 
 TEST(SingleThread, AllocateReturnsNull) {
-    memory_pool pool(150, false, false, out_of_memory_behavior::ReturnNull);
+    memory_pool<char> pool(150, false, false, out_of_memory_behavior::ReturnNull);
     useMemory(pool.allocate(100), 100);
     EXPECT_EQ(nullptr, pool.allocate(100));
     useMemory(pool.allocate(50), 50);
@@ -43,7 +43,7 @@ TEST(SingleThread, AllocateReturnsNull) {
 }
 
 TEST(SingleThread, AllocateThrows) {
-    memory_pool pool(150, false, false, out_of_memory_behavior::Throw);
+    memory_pool<char> pool(150, false, false, out_of_memory_behavior::Throw);
     useMemory(pool.allocate(100), 100);
     EXPECT_ANY_THROW((void)pool.allocate(100));
     useMemory(pool.allocate(50), 50);

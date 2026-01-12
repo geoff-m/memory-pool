@@ -4,6 +4,7 @@ add_executable(memory_pool_test
         src/TestSingleThread.cpp
         include/TestUtils.h
         src/TestUtils.cpp
+        src/CustomAllocator.cpp
 )
 
 target_include_directories(memory_pool_test PRIVATE include)

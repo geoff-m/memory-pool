@@ -5,7 +5,7 @@
 #include "memory_pool.h"
 #include <sys/mman.h>
 
-char* memory_pool::allocate_buffer(const size_t size) {
+char* allocate_buffer(const size_t size) {
     void* ret = mmap(nullptr,
                      size,
                      PROT_READ | PROT_WRITE,
@@ -19,7 +19,7 @@ char* memory_pool::allocate_buffer(const size_t size) {
     return static_cast<char*>(ret);
 }
 
-void memory_pool::free_buffer(char* buffer, const size_t size) {
+void free_buffer(char* buffer, const size_t size) {
     if (munmap(buffer, size) == -1) {
         throw std::system_error(errno, std::generic_category(),
                                 "Failed to deallocate memory");

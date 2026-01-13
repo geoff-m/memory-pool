@@ -1,5 +1,6 @@
 #pragma once
 #include <cstddef>
+#include <utility>
 
 enum class out_of_memory_behavior {
     Throw,
@@ -25,6 +26,11 @@ public:
     memory_pool(const memory_pool&) = delete;
 
     [[nodiscard]] void* allocate(size_t size);
+
+    template<typename T, typename... Args>
+    [[nodiscard]] T* allocate(Args&&... args) {
+        return new (static_cast<T*>(allocate(sizeof(T)))) T(std::forward<Args>(args)...);
+    }
 
     [[nodiscard]] size_t get_capacity() const;
     [[nodiscard]] size_t get_size() const;

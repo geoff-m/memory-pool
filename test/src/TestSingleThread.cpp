@@ -50,3 +50,30 @@ TEST(SingleThread, AllocateThrows) {
     assertPoolFull(pool);
 }
 
+TEST(SingleThread, TemplateAllocate) {
+    using T1 = char;
+    using T2 = long long;
+    constexpr auto t1Size = sizeof(T1);
+    constexpr auto t2Size = sizeof(T2);
+    memory_pool pool(t1Size + t2Size, false, false, out_of_memory_behavior::Throw);
+    useMemory(pool.allocate<T1>(), t1Size);
+    useMemory(pool.allocate<T2>(), t2Size);
+    assertPoolFull(pool);
+}
+
+struct Foo {
+    const int x;
+    const int y;
+
+    Foo(int x, int y) : x(x), y(y) {
+    }
+};
+
+TEST(SingleThread, TemplateAllocateConstrArgs) {
+    memory_pool pool(sizeof(Foo), false, false, out_of_memory_behavior::Throw);
+    auto* foo = pool.allocate<Foo>(10, 20);
+    EXPECT_EQ(10, foo->x);
+    EXPECT_EQ(20, foo->y);
+    useMemory(foo, sizeof(Foo));
+    assertPoolFull(pool);
+}

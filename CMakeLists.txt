@@ -5,6 +5,10 @@ set(CMAKE_CXX_STANDARD 20)
 enable_testing()
 Set(FETCHCONTENT_QUIET FALSE)
 include(FetchContent)
+include(cmake/asan.cmake)
+include(cmake/msan.cmake)
+include(cmake/tsan.cmake)
+include(cmake/ubsan.cmake)
 
 add_library(memory_pool
         include/memory_pool.h

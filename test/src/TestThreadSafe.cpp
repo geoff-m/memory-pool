@@ -1,0 +1,39 @@
+#include <gtest/gtest.h>
+#include "TestUtils.h"
+#include <thread>
+
+using namespace memory_pool;
+
+TEST(ThreadSafe, TryRace) {
+    auto* pool = pool::create(2000, pool_type::ThreadSafe, out_of_memory_behavior::Throw);
+    std::thread t1([pool] {
+        for (int i = 0; i < 1000; i++)
+            useMemory(pool->allocate(1), 1);
+    });
+    std::thread t2([pool] {
+        for (int i = 0; i < 1000; i++)
+            useMemory(pool->allocate(1), 1);
+    });
+    t1.join();
+    t2.join();
+    assertPoolFull(*pool);
+    delete pool;
+}
+
+TEST(ThreadSafe, TryRacePerThread) {
+    auto* pool = pool::create(1000, pool_type::PerThread, out_of_memory_behavior::Throw);
+    std::thread t1([pool] {
+        for (int i = 0; i < 1000; i++)
+            useMemory(pool->allocate(1), 1);
+        assertPoolFull(*pool);
+    });
+    std::thread t2([pool] {
+        for (int i = 0; i < 1000; i++)
+            useMemory(pool->allocate(1), 1);
+        assertPoolFull(*pool);
+    });
+    t1.join();
+    t2.join();
+    ASSERT_EQ(0, pool->get_size());
+    delete pool;
+}

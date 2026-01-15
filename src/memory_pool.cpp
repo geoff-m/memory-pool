@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <memory>
+#include <string>
 
 using namespace memory_pool;
 

@@ -65,5 +65,3 @@ private:
     const size_t totalCapacity;
     const out_of_memory_behavior oomBehavior;
 };
-
-void assertPageAligned(const char* pointer);

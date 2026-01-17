@@ -49,14 +49,11 @@ simple_pool::simple_pool(const size_t capacity, const out_of_memory_behavior oom
       commitAheadBytes(computeCommitAheadBytes(get_page_size())),
       oomBehavior(oomBehavior) {
     buffer = reserve_buffer(capacity);
-    printf("Buffer: %p to %p (capacity = %#lx)\n", buffer, buffer + capacity, capacity);
-    fflush(stdout);
     bytesInUse = 0;
     firstCommittedUnusedByte = buffer;
     const auto initialCommit = std::min(capacity, commitAheadBytes);
     allocate_reservation(firstCommittedUnusedByte, initialCommit);
     firstUncommittedByte = buffer + initialCommit;
-    printStats();
 }
 
 simple_pool::~simple_pool() {
@@ -98,12 +95,10 @@ void* simple_pool::allocate(const size_t size) {
             toCommit = toCommitAhead;
         }
         if (toCommit > 0) {
-            printf("Committing %#lx\n", toCommit);
             auto* firstUncommittedPage = get_containing_page(firstUncommittedByte);
             const auto pointInPage = firstUncommittedByte - firstUncommittedPage;
             allocate_reservation(firstUncommittedPage, toCommit);
             firstUncommittedByte += toCommit;
-            assertPageAligned(firstUncommittedByte);
         }
     }
 

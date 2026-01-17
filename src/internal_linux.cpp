@@ -1,5 +1,4 @@
 #ifdef __linux__
-#include <cassert>
 #include <stdexcept>
 #include <system_error>
 #include <unistd.h>
@@ -20,7 +19,6 @@ char* pool::reserve_buffer(const size_t size) {
         throw std::system_error(errno, std::generic_category(),
                                 "Failed to allocate memory");
     }
-    printf("Reserved %#lx bytes from %p to %p\n", size, ret, ret + size);
     return ret;
 }
 
@@ -38,19 +36,11 @@ char* pool::get_containing_page(char* pointer) {
  }
 
 
-void assertPageAligned(const char* pointer) {
-    if ((reinterpret_cast<uintptr_t>(pointer) % getPageSize()) == 0)
-        return;
-    assert(false);
-}
-
 void pool::allocate_reservation(char* buffer, const size_t size) {
-    assertPageAligned(buffer);
     if (mprotect(buffer, size, PROT_READ | PROT_WRITE) == -1) {
         throw std::system_error(errno, std::generic_category(),
                                 "Failed to allocate memory");
     }
-    printf("Committed %#lx bytes from %p to %p\n", size, buffer, buffer + size);
 }
 
 void pool::free_buffer(char* buffer, const size_t size) {

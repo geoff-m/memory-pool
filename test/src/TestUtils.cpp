@@ -14,7 +14,7 @@ void useMemory(void* buffer, const size_t size) {
 }
 
 void assertPoolFull(pool& pool) {
-    EXPECT_TRUE(pool.get_size() == pool.get_capacity());
+    EXPECT_EQ(pool.get_size(), pool.get_capacity());
     try {
         EXPECT_EQ(nullptr, pool.allocate(1));
     } catch (...) {

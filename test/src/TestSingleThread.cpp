@@ -17,6 +17,14 @@ TEST(SingleThread, UseAtOnce) {
     delete pool;
 }
 
+TEST(SingleThread, UseAtOnceBig) {
+    constexpr auto size = 1024*1024 * 10;
+    auto* pool = pool::create(size);
+    useMemory(pool->allocate(size), size);
+    assertPoolFull(*pool);
+    delete pool;
+}
+
 TEST(SingleThread, Use) {
     constexpr auto size = 10000;
     auto* pool = pool::create(size, pool_type::SingleThreaded, out_of_memory_behavior::ReturnNull);

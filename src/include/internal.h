@@ -5,9 +5,17 @@
 using namespace memory_pool;
 class simple_pool : public pool {
     const size_t totalCapacity;
-    size_t remainingCapacity;
-    char* buffer;
-    char* firstUnusedByte;
+    size_t commitAheadBytes;
+    size_t bytesInUse;
+    char* buffer; // Page-aligned.
+    char* firstCommittedUnusedByte;
+    char* firstUncommittedByte; // Page-aligned.
+    // low address ---uuuuuuuuuuuuuuuuuuuuuuccccccccccccccccccccccrrrrrrrrrrrrrrrrr----- high address
+    //                ^                     ^                     ^
+    //                buffer               firstCommittedUnused   firstUncommitted
+    // u = in use
+    // c = committed (not in use)
+    // r = reserved (not in use, not committed)
     const out_of_memory_behavior oomBehavior;
 
 public:
@@ -20,6 +28,9 @@ public:
     [[nodiscard]] size_t get_size() const override;
 
     [[nodiscard]] size_t get_capacity() const override;
+
+private:
+    void printStats();
 };
 
 class locked_pool : public pool {
@@ -54,3 +65,5 @@ private:
     const size_t totalCapacity;
     const out_of_memory_behavior oomBehavior;
 };
+
+void assertPageAligned(const char* pointer);

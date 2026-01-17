@@ -22,13 +22,14 @@ namespace memory_pool {
     class pool {
     public:
         virtual ~pool() = default;
+
         pool(const pool&) = delete;
 
         [[nodiscard]] static pool* create(size_t capacity);
 
         [[nodiscard]] static pool* create(size_t capacity,
-                                               pool_type type,
-                                               out_of_memory_behavior oomBehavior);
+                                          pool_type type,
+                                          out_of_memory_behavior oomBehavior);
 
         [[nodiscard]] virtual void* allocate(size_t size) = 0;
 
@@ -44,9 +45,15 @@ namespace memory_pool {
         [[nodiscard]] virtual size_t get_size() const = 0;
 
     protected:
-        [[nodiscard]] static char* allocate_buffer(size_t size);
+        [[nodiscard]] static char* reserve_buffer(size_t size);
+
+        static void allocate_reservation(char* buffer, size_t size);
 
         static void free_buffer(char* buffer, size_t size);
+
+        [[nodiscard]] static size_t get_page_size();
+
+        [[nodiscard]] static char* get_containing_page(char* pointer);
 
         pool() = default;
     };

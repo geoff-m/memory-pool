@@ -4,6 +4,10 @@
 #include <unordered_map>
 #include <memory>
 #include <string>
+#include <bit>
+#include <cassert>
+#include <sstream>
+#include <iomanip>
 
 using namespace memory_pool;
 
@@ -12,7 +16,7 @@ pool* pool::create(const size_t capacity) {
 }
 
 pool* pool::create(const size_t capacity, const pool_type type,
-                                 const out_of_memory_behavior oomBehavior) {
+                   const out_of_memory_behavior oomBehavior) {
     switch (type) {
         case pool_type::SingleThreaded:
             return new simple_pool(capacity, oomBehavior);
@@ -24,24 +28,59 @@ pool* pool::create(const size_t capacity, const pool_type type,
     }
 }
 
+size_t roundUpToPowerOf2(const size_t n) {
+    if (n == 0)
+        return 1;
+    if ((n & (n - 1)) == 0)
+        return n; // Already a power of 2.
+    return static_cast<size_t>(1) << (64 - std::countl_zero(n));
+}
+
+size_t computeCommitAheadBytes(size_t pageSize) {
+    constexpr auto oneMegabyte = static_cast<size_t>(1 << 20);
+    if (pageSize < oneMegabyte) {
+        return oneMegabyte;
+    }
+    return roundUpToPowerOf2(pageSize);
+}
+
 simple_pool::simple_pool(const size_t capacity, const out_of_memory_behavior oomBehavior)
     : totalCapacity(capacity),
-      remainingCapacity(capacity),
+      commitAheadBytes(computeCommitAheadBytes(get_page_size())),
       oomBehavior(oomBehavior) {
-    buffer = allocate_buffer(capacity);
-    firstUnusedByte = buffer;
+    buffer = reserve_buffer(capacity);
+    printf("Buffer: %p to %p (capacity = %#lx)\n", buffer, buffer + capacity, capacity);
+    fflush(stdout);
+    bytesInUse = 0;
+    firstCommittedUnusedByte = buffer;
+    const auto initialCommit = std::min(capacity, commitAheadBytes);
+    allocate_reservation(firstCommittedUnusedByte, initialCommit);
+    firstUncommittedByte = buffer + initialCommit;
+    printStats();
 }
 
 simple_pool::~simple_pool() {
     free_buffer(buffer, totalCapacity);
 }
 
+void simple_pool::printStats() {
+    std::stringstream ss;
+    ss << std::hex;
+    ss << "Pool " << reinterpret_cast<uintptr_t>(this) << ":\n";
+    ss << "  Uncommitted reserved: " << (buffer + totalCapacity) - firstUncommittedByte << '\n';
+    ss << "  Committed unused: " << firstUncommittedByte - firstCommittedUnusedByte << '\n';
+    ss << "  Used: " << firstCommittedUnusedByte - buffer << '\n';
+    printf("%s\n", ss.str().c_str());
+    fflush(stdout);
+}
+
+
 void* simple_pool::allocate(const size_t size) {
-    if (remainingCapacity < size) [[unlikely]] {
+    if (totalCapacity - bytesInUse < size) [[unlikely]] {
         if (oomBehavior == out_of_memory_behavior::Throw) {
             std::string message = "Out of memory: ";
-            message += std::to_string(size) + " bytes requested, but pool only has ";
-            message += std::to_string(remainingCapacity);
+            message += std::to_string(size) + " bytes requested, but pool has ";
+            message += std::to_string(totalCapacity - bytesInUse);
             message += " bytes free";
             throw std::invalid_argument(message);
         } else {
@@ -49,14 +88,41 @@ void* simple_pool::allocate(const size_t size) {
         }
     }
 
-    void* ret = firstUnusedByte;
-    firstUnusedByte += size;
-    remainingCapacity -= size;
+    const size_t toCommitAhead = (size * 2 + (commitAheadBytes - 1)) & ~(commitAheadBytes - 1);
+
+    if (firstCommittedUnusedByte + toCommitAhead > firstUncommittedByte) {
+        size_t toCommit;
+        if (firstUncommittedByte - buffer + toCommitAhead > totalCapacity) {
+            toCommit = (buffer + totalCapacity) - firstUncommittedByte;
+        } else {
+            toCommit = toCommitAhead;
+        }
+        if (toCommit > 0) {
+            printf("Committing %#lx\n", toCommit);
+            auto* firstUncommittedPage = get_containing_page(firstUncommittedByte);
+            const auto pointInPage = firstUncommittedByte - firstUncommittedPage;
+            allocate_reservation(firstUncommittedPage, toCommit);
+            firstUncommittedByte += toCommit;
+            assertPageAligned(firstUncommittedByte);
+        }
+    }
+
+    void* ret = firstCommittedUnusedByte;
+    firstCommittedUnusedByte += size;
+    bytesInUse += size;
+
+    if (bytesInUse == totalCapacity) {
+        assert(firstUncommittedByte == buffer + totalCapacity);
+        assert(firstCommittedUnusedByte== buffer + totalCapacity);
+    } else {
+        assert(firstCommittedUnusedByte < firstUncommittedByte);
+    }
+
     return ret;
 }
 
 size_t simple_pool::get_size() const {
-    return totalCapacity - remainingCapacity;
+    return bytesInUse;
 }
 
 size_t simple_pool::get_capacity() const {

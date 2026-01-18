@@ -107,8 +107,6 @@ size_t simple_pool::get_capacity() const {
 }
 
 void* simple_pool::do_allocate(std::size_t size, std::size_t alignment) {
-    printf("simple_pool::do_allocate(%lx, %lx)\n", size, alignment);
-    fflush(stdout);
     if (totalCapacity - bytesInUse < size) [[unlikely]] {
         std::string message = "Out of memory: ";
         message += std::to_string(size) + " bytes requested, but pool has ";
@@ -137,7 +135,8 @@ void* simple_pool::do_allocate(std::size_t size, std::size_t alignment) {
     }
 
     void* ret = alignmentSkip + firstCommittedUnusedByte;
-    if (firstCommittedUnusedByte + alignmentSkip + size > buffer + totalCapacity) {
+    auto* newFirstCommittedUnusedByte = firstCommittedUnusedByte + alignmentSkip + size;
+    if (newFirstCommittedUnusedByte > buffer + totalCapacity) {
         std::string message = "Out of memory: ";
         message += std::to_string(size) + " bytes requested with ";
         message += std::to_string(alignment) + "-byte alignment, which pool cannot fit in its last ";
@@ -146,7 +145,7 @@ void* simple_pool::do_allocate(std::size_t size, std::size_t alignment) {
         throw std::invalid_argument(message);
     }
 
-    firstCommittedUnusedByte += alignmentSkip + size;
+    firstCommittedUnusedByte = newFirstCommittedUnusedByte;
     bytesInUse += alignmentSkip + size;
     alignmentFragmentationBytes += alignmentSkip;
 

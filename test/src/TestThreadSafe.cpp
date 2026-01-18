@@ -8,11 +8,11 @@ TEST(ThreadSafe, TryRace) {
     auto* pool = pool::create(2000, pool_type::ThreadSafe);
     std::thread t1([pool] {
         for (int i = 0; i < 1000; i++)
-            useMemory(pool->do_allocate(1), 1);
+            useMemory(pool->newBuffer(1), 1);
     });
     std::thread t2([pool] {
         for (int i = 0; i < 1000; i++)
-            useMemory(pool->do_allocate(1), 1);
+            useMemory(pool->newBuffer(1), 1);
     });
     t1.join();
     t2.join();
@@ -26,12 +26,12 @@ TEST(ThreadSafe, TryRaceBig) {
     constexpr auto allocationCount = 50;
     std::thread t1([pool] {
         for (int i = 0; i < allocationCount; i++) {
-            useMemory(pool->do_allocate(MB), MB);
+            useMemory(pool->newBuffer(MB), MB);
         }
     });
     std::thread t2([pool] {
         for (int i = 0; i < allocationCount; i++) {
-            useMemory(pool->do_allocate(MB), MB);
+            useMemory(pool->newBuffer(MB), MB);
         }
     });
     t1.join();
@@ -44,12 +44,12 @@ TEST(ThreadSafe, TryRacePerThread) {
     auto* pool = pool::create(1000, pool_type::PerThread);
     std::thread t1([pool] {
         for (int i = 0; i < 1000; i++)
-            useMemory(pool->do_allocate(1), 1);
+            useMemory(pool->newBuffer(1), 1);
         assertPoolFull(*pool);
     });
     std::thread t2([pool] {
         for (int i = 0; i < 1000; i++)
-            useMemory(pool->do_allocate(1), 1);
+            useMemory(pool->newBuffer(1), 1);
         assertPoolFull(*pool);
     });
     t1.join();
@@ -63,12 +63,12 @@ TEST(ThreadSafe, TryRaceBigPerThread) {
     auto* pool = pool::create(100 * MB, pool_type::PerThread);
     std::thread t1([pool] {
         for (int i = 0; i < 100; i++)
-            useMemory(pool->do_allocate(MB), MB);
+            useMemory(pool->newBuffer(MB), MB);
         assertPoolFull(*pool);
     });
     std::thread t2([pool] {
         for (int i = 0; i < 100; i++)
-            useMemory(pool->do_allocate(MB), MB);
+            useMemory(pool->newBuffer(MB), MB);
         assertPoolFull(*pool);
     });
     t1.join();

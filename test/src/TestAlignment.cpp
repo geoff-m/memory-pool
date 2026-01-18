@@ -4,12 +4,24 @@
 
 using namespace memory_pool;
 
-TEST(Alignment, Align4) {
+TEST(Alignment, AlignBuffer4) {
     auto* pool = pool::create(100);
     constexpr auto expectedAlignment = 4;
     for (int i = 0; i < 8; ++i) {
-        (void)pool->do_allocate(1, 1); // Perturb alignment
-        const auto ptr = reinterpret_cast<uintptr_t>(pool->do_allocate(1, expectedAlignment));
+        (void)pool->newBuffer(1, 1); // Perturb alignment
+        const auto ptr = reinterpret_cast<uintptr_t>(pool->newBuffer(1, expectedAlignment));
+        EXPECT_EQ(0, ptr % expectedAlignment);
+    }
+    delete pool;
+}
+
+TEST(Alignment, AlignObject) {
+    auto* pool = pool::create(100);
+    constexpr auto expectedAlignment = alignof(int);
+    static_assert(alignof(int) != 1);
+    for (int i = 0; i < 8; ++i) {
+        (void)pool->newBuffer(1, 1); // Perturb alignment
+        const auto ptr = reinterpret_cast<uintptr_t>(pool->newObject<int>());
         EXPECT_EQ(0, ptr % expectedAlignment);
     }
     delete pool;

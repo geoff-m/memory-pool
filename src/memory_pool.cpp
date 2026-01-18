@@ -27,6 +27,14 @@ pool* pool::create(const size_t capacity, const pool_type type) {
     }
 }
 
+void* pool::newBuffer(const std::size_t size, const std::size_t alignment) {
+    return do_allocate(size, alignment);
+}
+
+void* pool::newBuffer(const std::size_t size) {
+    return do_allocate(size, 1);
+}
+
 void* pool::do_allocate(const std::size_t size) {
     return do_allocate(size, 1);
 }

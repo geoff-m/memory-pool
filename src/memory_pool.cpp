@@ -12,20 +12,39 @@
 using namespace memory_pool;
 
 pool* pool::create(const size_t capacity) {
-    return create(capacity, pool_type::ThreadSafe, out_of_memory_behavior::Throw);
+    return create(capacity, pool_type::ThreadSafe);
 }
 
-pool* pool::create(const size_t capacity, const pool_type type,
-                   const out_of_memory_behavior oomBehavior) {
+pool* pool::create(const size_t capacity, const pool_type type) {
     switch (type) {
         case pool_type::SingleThreaded:
-            return new simple_pool(capacity, oomBehavior);
+            return new simple_pool(capacity);
         case pool_type::PerThread:
-            return new pool_per_thread(capacity, oomBehavior);
+            return new pool_per_thread(capacity);
         default:
         case pool_type::ThreadSafe:
-            return new locked_pool(capacity, oomBehavior);
+            return new locked_pool(capacity);
     }
+}
+
+void* pool::new_buffer(const std::size_t size, const std::size_t alignment) {
+    return do_allocate(size, alignment);
+}
+
+void* pool::new_buffer(const std::size_t size) {
+    return do_allocate(size, 1);
+}
+
+void* pool::do_allocate(const std::size_t size) {
+    return do_allocate(size, 1);
+}
+
+void pool::do_deallocate(void* p, std::size_t bytes, std::size_t alignment) {
+    // Do nothing.
+}
+
+bool pool::do_is_equal(const memory_resource& other) const noexcept {
+    return this == &other;
 }
 
 size_t roundUpToPowerOf2(const size_t n) {
@@ -44,10 +63,9 @@ size_t computeCommitAheadBytes(size_t pageSize) {
     return roundUpToPowerOf2(pageSize);
 }
 
-simple_pool::simple_pool(const size_t capacity, const out_of_memory_behavior oomBehavior)
+simple_pool::simple_pool(const size_t capacity)
     : totalCapacity(capacity),
-      commitAheadBytes(computeCommitAheadBytes(get_page_size())),
-      oomBehavior(oomBehavior) {
+      commitAheadBytes(computeCommitAheadBytes(get_page_size())) {
     buffer = reserve_buffer(capacity);
     bytesInUse = 0;
     firstCommittedUnusedByte = buffer;
@@ -58,6 +76,10 @@ simple_pool::simple_pool(const size_t capacity, const out_of_memory_behavior oom
 
 simple_pool::~simple_pool() {
     free_buffer(buffer, totalCapacity);
+}
+
+size_t simple_pool::get_alignment_fragmentation() const {
+    return alignmentFragmentationBytes;
 }
 
 void simple_pool::printStats() {
@@ -71,21 +93,39 @@ void simple_pool::printStats() {
     fflush(stdout);
 }
 
+size_t simple_pool::get_size() const {
+    return bytesInUse;
+}
 
-void* simple_pool::allocate(const size_t size) {
+size_t simple_pool::get_capacity() const {
+    return totalCapacity;
+}
+
+[[nodiscard]] size_t computeAlignmentSkip(const char* pointer, const size_t alignment) {
+    size_t remainder;
+    if ((alignment & (alignment - 1)) == 0) {
+        // Alignment is a power of 2.
+        remainder = reinterpret_cast<uintptr_t>(pointer) & (alignment - 1);
+    } else {
+        remainder = reinterpret_cast<uintptr_t>(pointer) % alignment;
+    }
+    if (remainder == 0)
+        return 0;
+    return alignment - remainder;
+}
+
+void* simple_pool::do_allocate(std::size_t size, std::size_t alignment) {
     if (totalCapacity - bytesInUse < size) [[unlikely]] {
-        if (oomBehavior == out_of_memory_behavior::Throw) {
-            std::string message = "Out of memory: ";
-            message += std::to_string(size) + " bytes requested, but pool has ";
-            message += std::to_string(totalCapacity - bytesInUse);
-            message += " bytes free";
-            throw std::invalid_argument(message);
-        } else {
-            return nullptr;
-        }
+        std::string message = "Out of memory: ";
+        message += std::to_string(size) + " bytes requested, but pool has ";
+        message += std::to_string(totalCapacity - bytesInUse);
+        message += " bytes free";
+        throw std::invalid_argument(message);
     }
 
-    const size_t toCommitAhead = (size * 2 + (commitAheadBytes - 1)) & ~(commitAheadBytes - 1);
+    const auto alignmentSkip = computeAlignmentSkip(firstCommittedUnusedByte, alignment);
+
+    const size_t toCommitAhead = (alignmentSkip + size * 2 + (commitAheadBytes - 1)) & ~(commitAheadBytes - 1);
 
     if (firstCommittedUnusedByte + toCommitAhead > firstUncommittedByte) {
         size_t toCommit;
@@ -102,13 +142,24 @@ void* simple_pool::allocate(const size_t size) {
         }
     }
 
-    void* ret = firstCommittedUnusedByte;
-    firstCommittedUnusedByte += size;
-    bytesInUse += size;
+    void* ret = alignmentSkip + firstCommittedUnusedByte;
+    auto* newFirstCommittedUnusedByte = firstCommittedUnusedByte + alignmentSkip + size;
+    if (newFirstCommittedUnusedByte > buffer + totalCapacity) {
+        std::string message = "Out of memory: ";
+        message += std::to_string(size) + " bytes requested with ";
+        message += std::to_string(alignment) + "-byte alignment, which pool cannot fit in its last ";
+        message += std::to_string(totalCapacity - bytesInUse);
+        message += " free bytes";
+        throw std::invalid_argument(message);
+    }
+
+    firstCommittedUnusedByte = newFirstCommittedUnusedByte;
+    bytesInUse += alignmentSkip + size;
+    alignmentFragmentationBytes += alignmentSkip;
 
     if (bytesInUse == totalCapacity) {
         assert(firstUncommittedByte == buffer + totalCapacity);
-        assert(firstCommittedUnusedByte== buffer + totalCapacity);
+        assert(firstCommittedUnusedByte == buffer + totalCapacity);
     } else {
         assert(firstCommittedUnusedByte < firstUncommittedByte);
     }
@@ -116,21 +167,18 @@ void* simple_pool::allocate(const size_t size) {
     return ret;
 }
 
-size_t simple_pool::get_size() const {
-    return bytesInUse;
+locked_pool::locked_pool(const size_t capacity)
+    : pool(capacity) {
 }
 
-size_t simple_pool::get_capacity() const {
-    return totalCapacity;
-}
-
-locked_pool::locked_pool(const size_t capacity, const out_of_memory_behavior oomBehavior)
-    : pool(capacity, oomBehavior) {
-}
-
-void* locked_pool::allocate(const size_t size) {
+void* locked_pool::do_allocate(std::size_t size, std::size_t alignment) {
     std::lock_guard lock(mutex);
-    return pool.allocate(size);
+    return pool.do_allocate(size, alignment);
+}
+
+size_t locked_pool::get_alignment_fragmentation() const {
+    std::lock_guard lock(mutex);
+    return pool.get_alignment_fragmentation();
 }
 
 size_t locked_pool::get_capacity() const {
@@ -142,14 +190,10 @@ size_t locked_pool::get_size() const {
     return pool.get_size();
 }
 
-pool_per_thread::pool_per_thread(const size_t capacity, const out_of_memory_behavior oomBehavior)
-    : totalCapacity(capacity),
-      oomBehavior(oomBehavior) {
+pool_per_thread::pool_per_thread(const size_t capacity)
+    : totalCapacity(capacity) {
 }
 
-void* pool_per_thread::allocate(const size_t size) {
-    return get_thread_local_pool()->allocate(size);
-}
 
 size_t pool_per_thread::get_capacity() const {
     return get_thread_local_pool()->get_capacity();
@@ -157,6 +201,14 @@ size_t pool_per_thread::get_capacity() const {
 
 size_t pool_per_thread::get_size() const {
     return get_thread_local_pool()->get_size();
+}
+
+size_t pool_per_thread::get_alignment_fragmentation() const {
+    return get_thread_local_pool()->get_alignment_fragmentation();
+}
+
+void* pool_per_thread::do_allocate(std::size_t size, std::size_t alignment) {
+    return get_thread_local_pool()->allocate(size, alignment);
 }
 
 pool* pool_per_thread::get_thread_local_pool() const {
@@ -171,5 +223,5 @@ pool* pool_per_thread::get_thread_local_pool() const {
 }
 
 pool* pool_per_thread::create_pool() const {
-    return new simple_pool(totalCapacity, oomBehavior);
+    return new simple_pool(totalCapacity);
 }

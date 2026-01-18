@@ -3,7 +3,6 @@ project(memory_pool)
 
 set(CMAKE_CXX_STANDARD 20)
 enable_testing()
-Set(FETCHCONTENT_QUIET FALSE)
 include(FetchContent)
 include(cmake/asan.cmake)
 include(cmake/msan.cmake)

@@ -12,7 +12,7 @@ TEST(SingleThread, Create) {
 TEST(SingleThread, UseAtOnce) {
     constexpr auto size = 10000;
     auto* pool = pool::create(size);
-    useMemory(pool->newBuffer(size), size);
+    useMemory(pool->new_buffer(size), size);
     assertPoolFull(*pool);
     delete pool;
 }
@@ -20,7 +20,7 @@ TEST(SingleThread, UseAtOnce) {
 TEST(SingleThread, UseAtOnceBig) {
     constexpr auto size = 1024 * 1024 * 10;
     auto* pool = pool::create(size);
-    useMemory(pool->newBuffer(size), size);
+    useMemory(pool->new_buffer(size), size);
     assertPoolFull(*pool);
     delete pool;
 }
@@ -34,7 +34,7 @@ TEST(SingleThread, Use) {
     int chunkCount = 0;
     while (pool->get_size() < pool->get_capacity()) {
         try {
-            auto* chunk = pool->newBuffer(chunkSize);
+            auto* chunk = pool->new_buffer(chunkSize);
             memset(chunk, 0, chunkSize);
             ++chunkCount;
         } catch (const std::exception& ex) {
@@ -50,9 +50,9 @@ TEST(SingleThread, Use) {
 
 TEST(SingleThread, AllocateThrows) {
     auto* pool = pool::create(150, pool_type::SingleThreaded);
-    useMemory(pool->newBuffer(100), 100);
-    EXPECT_ANY_THROW((void)pool->newBuffer(100));
-    useMemory(pool->newBuffer(20), 20);
+    useMemory(pool->new_buffer(100), 100);
+    EXPECT_ANY_THROW((void)pool->new_buffer(100));
+    useMemory(pool->new_buffer(20), 20);
     delete pool;
 }
 

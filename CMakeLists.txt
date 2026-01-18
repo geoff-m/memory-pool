@@ -11,7 +11,7 @@ include(cmake/tsan.cmake)
 include(cmake/ubsan.cmake)
 
 add_library(memory_pool
-        include/memory_pool.h
+        include/memory-pool/memory_pool.h
         src/memory_pool.cpp
         src/include/internal.h
         src/internal_linux.cpp

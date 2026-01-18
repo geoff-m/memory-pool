@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "memory_pool.h"
+#include "memory-pool/memory_pool.h"
 #include "TestUtils.h"
 
 using namespace memory_pool;

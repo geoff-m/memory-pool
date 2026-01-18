@@ -32,8 +32,9 @@ namespace memory_pool {
         // Gets the number of bytes wasted due to alignment requests.
         [[nodiscard]] virtual size_t get_alignment_fragmentation() const = 0;
 
-        void* do_allocate(std::size_t size, std::size_t alignment) override = 0;
-        void* do_allocate(std::size_t size);
+        [[nodiscard]] void* do_allocate(std::size_t size, std::size_t alignment) override = 0;
+
+        [[nodiscard]] void* do_allocate(std::size_t size);
 
     protected:
         pool() = default;

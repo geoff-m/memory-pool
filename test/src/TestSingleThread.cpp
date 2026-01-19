@@ -150,7 +150,7 @@ TEST(SingleThread, TemplateAllocatorVectorConstrArgs2) {
 
 TEST(SingleThread, AssignVector) {
     allocator<int> a(123);
-    std::vector<int, allocator<int>> v1 (a);
+    std::vector<int, allocator<int>> v1(a);
     v1.push_back(1);
     const auto usage1 = a.get_pool()->get_size();
 
@@ -177,4 +177,9 @@ TEST(SingleThread, ConstructMultipleTypesFromAllocator) {
     EXPECT_EQ(2, x->x);
     EXPECT_EQ(3, x->y);
     useMemory(&x, sizeof(Foo));
+}
+
+TEST(SingleThread, ConstructAllocatorNewType) {
+    allocator<int> a(1000);
+    std::vector<long, allocator<long>> v(a);
 }

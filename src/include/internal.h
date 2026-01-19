@@ -7,11 +7,11 @@ using namespace memory_pool;
 class simple_pool : public pool {
     const size_t totalCapacity;
     size_t commitAheadBytes;
-    size_t bytesInUse;
+    size_t bytesInUse = 0;
     char* buffer; // Page-aligned.
     char* firstCommittedUnusedByte;
     char* firstUncommittedByte; // Page-aligned.
-    size_t alignmentFragmentationBytes;
+    size_t alignmentFragmentationBytes = 0;
     // low address ---uuuuuuuuuuuuuuuuuuuuuuccccccccccccccccccccccrrrrrrrrrrrrrrrrr----- high address
     //                ^                     ^                     ^
     //                buffer               firstCommittedUnused   firstUncommitted

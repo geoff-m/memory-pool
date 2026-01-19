@@ -1,7 +1,9 @@
 #pragma once
 #include <cstddef>
+#include <cstdio>
 #include <memory_resource>
 #include <utility>
+#include <memory>
 
 namespace memory_pool {
     enum class pool_type {
@@ -64,5 +66,69 @@ namespace memory_pool {
         [[nodiscard]] static size_t get_page_size();
 
         [[nodiscard]] static char* get_containing_page(char* pointer);
+    };
+
+    template<class T>
+    class allocator {
+        std::shared_ptr<pool> impl;
+
+    public:
+        using value_type = T;
+
+        explicit allocator(size_t capacity)
+            : impl(pool::create(capacity)) {
+        }
+
+        allocator(size_t capacity, pool_type type)
+            : impl(pool::create(capacity, type)) {
+        }
+
+        template<class U>
+        allocator(allocator<U> const& other) noexcept
+            : impl(other.impl) {
+        }
+
+        template<class U>
+        allocator(allocator<U>&& other) noexcept
+            : impl(other.impl) {
+            other.impl = nullptr;
+        }
+
+
+        [[nodiscard]] value_type* allocate(size_t count) {
+            return static_cast<value_type*>(impl->allocate(count * sizeof(value_type), alignof(value_type)));
+        }
+
+        void deallocate(value_type*, size_t) noexcept {
+            // Do nothing.
+        }
+
+        template<typename... Args>
+        [[nodiscard]] value_type* allocate_object(Args&&... args) {
+            return new(allocate(sizeof(value_type))) value_type(std::forward<Args>(args)...);
+        }
+
+        template<typename U, typename... Args>
+        [[nodiscard]] U* allocate_object(Args&&... args) {
+            return new(allocate(sizeof(U))) U(std::forward<Args>(args)...);
+        }
+
+        using propagate_on_container_copy_assignment = std::true_type;
+        using propagate_on_container_move_assignment = std::true_type;
+        using propagate_on_container_swap = std::true_type;
+
+        [[nodiscard]] pool* get_pool() const {
+            return impl.get();
+        }
+
+        template<class U>
+        bool operator==(allocator<U> const& other) noexcept {
+            return impl == other.impl;
+        }
+
+        template<class U>
+        bool operator!=(allocator<U> const& other) noexcept {
+            return !(*this == other);
+        }
     };
 }

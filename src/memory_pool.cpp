@@ -67,7 +67,6 @@ simple_pool::simple_pool(const size_t capacity)
     : totalCapacity(capacity),
       commitAheadBytes(computeCommitAheadBytes(get_page_size())) {
     buffer = reserve_buffer(capacity);
-    bytesInUse = 0;
     firstCommittedUnusedByte = buffer;
     const auto initialCommit = std::min(capacity, commitAheadBytes);
     allocate_reservation(firstCommittedUnusedByte, initialCommit);

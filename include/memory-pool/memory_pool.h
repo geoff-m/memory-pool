@@ -70,17 +70,13 @@ namespace memory_pool {
 
     template<class T>
     class allocator {
-        std::shared_ptr<pool> impl;
+        pool* impl;
 
     public:
         using value_type = T;
 
-        explicit allocator(size_t capacity)
-            : impl(pool::create(capacity)) {
-        }
-
-        allocator(size_t capacity, pool_type type)
-            : impl(pool::create(capacity, type)) {
+        explicit allocator(pool* pool)
+            : impl(pool) {
         }
 
         template<class U>
@@ -116,7 +112,7 @@ namespace memory_pool {
         using propagate_on_container_move_assignment = std::true_type;
         using propagate_on_container_swap = std::true_type;
 
-        [[nodiscard]] std::shared_ptr<pool> get_pool() const {
+        [[nodiscard]] pool* get_pool() const {
             return impl;
         }
 

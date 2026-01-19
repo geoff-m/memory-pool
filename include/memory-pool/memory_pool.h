@@ -85,13 +85,12 @@ namespace memory_pool {
 
         template<class U>
         allocator(allocator<U> const& other) noexcept
-            : impl(other.impl) {
+            : impl(other.get_pool()) {
         }
 
         template<class U>
         allocator(allocator<U>&& other) noexcept
-            : impl(other.impl) {
-            other.impl = nullptr;
+            : impl(other.get_pool()) {
         }
 
 
@@ -117,8 +116,8 @@ namespace memory_pool {
         using propagate_on_container_move_assignment = std::true_type;
         using propagate_on_container_swap = std::true_type;
 
-        [[nodiscard]] pool* get_pool() const {
-            return impl.get();
+        [[nodiscard]] std::shared_ptr<pool> get_pool() const {
+            return impl;
         }
 
         template<class U>

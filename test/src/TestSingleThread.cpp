@@ -201,6 +201,7 @@ TEST(SingleThread, OutOfMemory) {
     EXPECT_ANY_THROW((void)pool->allocate(1001));
     (void)pool->allocate(1000);
     EXPECT_ANY_THROW((void)pool->allocate(1));
+    delete pool;
 }
 
 TEST(SingleThread, OutOfMemoryForAlignment) {
@@ -208,6 +209,7 @@ TEST(SingleThread, OutOfMemoryForAlignment) {
     auto* initial = pool->new_buffer(1);
     const auto requestedAlignment = reinterpret_cast<uintptr_t>(initial) + 2;
     EXPECT_ANY_THROW((void)pool->new_buffer(999, requestedAlignment));
+    delete pool;
 }
 
 TEST(SingleThread, AlignmentFragmentation) {
@@ -219,4 +221,5 @@ TEST(SingleThread, AlignmentFragmentation) {
     const auto expectedGap = 8 - (initial % 8);
     EXPECT_EQ(expectedGap, actualGap);
     EXPECT_EQ(expectedGap- INITIAL_SIZE, pool->get_alignment_fragmentation());
+    delete pool;
 }

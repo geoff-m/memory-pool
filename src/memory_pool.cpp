@@ -47,12 +47,15 @@ bool pool::do_is_equal(const memory_resource& other) const noexcept {
     return this == &other;
 }
 
-size_t roundUpToPowerOf2(const size_t n) {
+size_t memory_pool::roundUpToPowerOf2(const size_t n) {
     if (n == 0)
         return 1;
     if ((n & (n - 1)) == 0)
         return n; // Already a power of 2.
-    return static_cast<size_t>(1) << (64 - std::countl_zero(n));
+    const auto result = static_cast<size_t>(1) << (64 - std::countl_zero(n));
+    if (result <= n)
+        throw std::invalid_argument("Cannot round up to power of 2");
+    return result;
 }
 
 size_t computeCommitAheadBytes(size_t pageSize) {
@@ -211,13 +214,14 @@ void* pool_per_thread::do_allocate(std::size_t size, std::size_t alignment) {
 }
 
 pool* pool_per_thread::get_thread_local_pool() const {
-    static thread_local std::unordered_map<const pool_per_thread*, std::unique_ptr<pool>> threadLocalPools;
-    const auto it = threadLocalPools.find(this);
-    if (it != threadLocalPools.end()) {
+    std::lock_guard lock(perThreadPoolsMutex);
+    const auto thisThread = getThreadHandle();
+    const auto it = perThreadPools.find(thisThread);
+    if (it != perThreadPools.end()) {
         return it->second.get();
     }
     auto* ret = create_pool();
-    threadLocalPools[this] = std::unique_ptr<pool>(ret);
+    perThreadPools[thisThread] = std::unique_ptr<pool>(ret);
     return ret;
 }
 

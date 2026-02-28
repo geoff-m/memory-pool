@@ -6,6 +6,7 @@ add_executable(memory_pool_test
         src/TestUtils.cpp
         src/TestThreadSafe.cpp
         src/TestAlignment.cpp
+        src/TestRoundUpPowerOf2.cpp
 )
 
 target_include_directories(memory_pool_test PRIVATE include)

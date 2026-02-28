@@ -14,7 +14,9 @@ add_library(memory_pool
         src/memory_pool.cpp
         src/include/internal.h
         src/internal_linux.cpp
-        src/internal_windows.cpp)
+        src/internal_windows.cpp
+        src/include/internal_linux.h
+        src/include/internal_windows.h)
 
 target_include_directories(memory_pool PUBLIC include)
 target_include_directories(memory_pool PRIVATE src/include)

@@ -195,3 +195,28 @@ TEST(SingleThread, ConstructAllocatorNewType) {
     std::vector<long, allocator<long>> v(a);
     delete pool;
 }
+
+TEST(SingleThread, OutOfMemory) {
+    auto* pool = pool::create(1000);
+    EXPECT_ANY_THROW((void)pool->allocate(1001));
+    (void)pool->allocate(1000);
+    EXPECT_ANY_THROW((void)pool->allocate(1));
+}
+
+TEST(SingleThread, OutOfMemoryForAlignment) {
+    auto* pool = pool::create(1000);
+    auto* initial = pool->new_buffer(1);
+    const auto requestedAlignment = reinterpret_cast<uintptr_t>(initial) + 2;
+    EXPECT_ANY_THROW((void)pool->new_buffer(999, requestedAlignment));
+}
+
+TEST(SingleThread, AlignmentFragmentation) {
+    auto* pool = pool::create(1000);
+    const auto INITIAL_SIZE = 3;
+    const auto initial = reinterpret_cast<uintptr_t>(pool->new_buffer(INITIAL_SIZE));
+    const auto aligned = reinterpret_cast<uintptr_t>(pool->new_buffer(1, 8));
+    const auto actualGap = aligned - initial;
+    const auto expectedGap = 8 - (initial % 8);
+    EXPECT_EQ(expectedGap, actualGap);
+    EXPECT_EQ(expectedGap- INITIAL_SIZE, pool->get_alignment_fragmentation());
+}

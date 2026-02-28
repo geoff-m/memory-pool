@@ -50,4 +50,8 @@ void pool::free_buffer(char* buffer, const size_t size) {
     }
 }
 
+NativeThreadHandle memory_pool::getThreadHandle() {
+    return pthread_self();
+}
+
 #endif

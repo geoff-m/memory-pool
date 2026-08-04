@@ -30,7 +30,7 @@ target_include_directories(memory_pool
 # This propagates C++ standard 20 (at least) to targets that link to this.
 target_compile_features(memory_pool INTERFACE cxx_std_20)
 
-if (STRINGPOOL_TEST_ENABLE)
+if (MEMORYPOOL_TEST_ENABLE)
     enable_testing()
     find_package(GTest CONFIG REQUIRED)
     add_subdirectory(test)

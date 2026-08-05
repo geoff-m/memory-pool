@@ -12,7 +12,7 @@ add_executable(memory_pool_test
 target_include_directories(memory_pool_test PRIVATE include)
 
 target_link_libraries(memory_pool_test
-        PRIVATE memory_pool
+        PRIVATE memory-pool
         PRIVATE GTest::gtest_main
 )
 

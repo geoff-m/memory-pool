@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "memory-pool/memory_pool.h"
+#include "memory-pool/memory-pool.h"
 #include "../../src/include/internal.h"
 
 [[nodiscard]] bool isPowerOf2(size_t value) {
